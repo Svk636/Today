@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sadhak · Output Tracker</title>
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── PRINT BUTTON (top-right) ── */
+    #save-pdf-btn {
+      position: fixed;
+      top: 14px;
+      right: 18px;
+      z-index: 10000;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      padding: 8px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 1px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+    #save-pdf-btn:hover { background: #222; border-color: #888; }
+    @media print { #save-pdf-btn { display: none !important; } }
+
+    /* Digital control bar (bottom) */
+    .digital-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: #eee;
+      padding: 8px 20px;
+      border-radius: 30px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      z-index: 9999;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      border: 1px solid #555;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .digital-bar button {
+      background: transparent;
+      border: 1px solid #888;
+      color: #eee;
+      padding: 4px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+    .digital-bar button:hover { background: #444; border-color: #aaa; }
+    .digital-bar .status { color: #aaa; font-size: 8px; }
+    @media print { .digital-bar { display: none !important; } }
+
+    /* ═══════════════════════════════════════════════
+       SADHAK · OUTPUT TRACKER  –  A4 Landscape
+       ═══════════════════════════════════════════════ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    :root {
+      --bg: #ffffff;
+      --ink: #111111;
+      --ink-mid: #3a3a3a;
+      --ink-light: #6a6a6a;
+      --ink-faint: #9a9a9a;
+      --rule: #c8c8c8;
+      --rule-lt: #e0e0e0;
+      --serif: 'EB Garamond', 'Noto Sans Devanagari', Georgia, serif;
+      --display: 'Cinzel', serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: #d0d0d0;
+      font-family: var(--mono);
+      font-size: 7px;
+      color: var(--ink);
+      margin: 0;
+      padding: 0;
+      padding-bottom: 80px;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 4mm 5mm;
+    }
+
+    .page {
+      width: 100%;
+      height: 200mm;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4mm;
+      break-inside: avoid;
+      page-break-after: avoid;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding: 2mm 3mm 2mm 3mm;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 0.6px solid var(--ink);
+      padding-bottom: 0.6mm;
+      margin-bottom: 0.3mm;
+      gap: 2mm;
+      flex-shrink: 0;
+    }
+    .hdr-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3mm;
+      flex-shrink: 0;
+    }
+    .hdr-title {
+      font-family: var(--display);
+      font-size: 11pt;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .hdr-tagline {
+      font-family: var(--serif);
+      font-size: 6.5px;
+      font-style: italic;
+      color: var(--ink-light);
+      letter-spacing: 0.8px;
+    }
+
+    .meta-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1.2mm;
+      align-items: end;
+      flex: 1;
+      margin: 0 4mm;
+    }
+    .meta-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3mm;
+    }
+    .meta-label {
+      font-family: var(--mono);
+      font-size: 5px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--ink-light);
+    }
+    .write-line {
+      border-bottom: 0.4px solid var(--rule);
+      height: 10px;
+    }
+
+    .hdr-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.2mm;
+      flex-shrink: 0;
+    }
+    .hdr-day {
+      font-family: var(--display);
+      font-size: 6.5px;
+      letter-spacing: 1.5px;
+      color: var(--ink-mid);
+      text-transform: uppercase;
+    }
+    .hdr-pg {
+      font-family: var(--mono);
+      font-size: 5px;
+      color: var(--ink-light);
+    }
+
+    /* ─── TOP BAND ─── */
+    .top-band {
+      display: flex;
+      align-items: center;
+      gap: 2.5mm;
+      padding: 0.3mm 0;
+      flex-shrink: 0;
+      border-top: 0.3px solid var(--rule-lt);
+      border-bottom: 0.3px solid var(--rule-lt);
+      margin-bottom: 0.3mm;
+    }
+    .sankalpa {
+      display: flex;
+      align-items: center;
+      gap: 1.5mm;
+      flex: 1;
+    }
+    .sankalpa-label {
+      font-family: var(--serif);
+      font-size: 7px;
+      font-style: italic;
+      color: var(--ink-mid);
+      white-space: nowrap;
+    }
+    .sankalpa-line {
+      flex: 1;
+      border-bottom: 0.4px solid var(--rule);
+      height: 5px;
+    }
+
+    .must-wins {
+      display: flex;
+      gap: 1mm;
+      flex-shrink: 0;
+      align-items: center;
+    }
+    .mw-label {
+      font-family: var(--mono);
+      font-size: 5px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--ink-mid);
+      white-space: nowrap;
+    }
+    .mw-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8mm;
+      border: 0.4px solid var(--rule);
+      padding: 0.1mm 0.8mm;
+      min-width: 28mm;
+    }
+    .mw-num {
+      font-family: var(--display);
+      font-size: 5.5px;
+      color: var(--ink-mid);
+      font-weight: 700;
+    }
+    .mw-line {
+      flex: 1;
+      border-bottom: 0.4px solid var(--rule);
+      height: 5px;
+    }
+
+    .ratings {
+      display: flex;
+      gap: 1.2mm;
+      flex-shrink: 0;
+    }
+    .rating-card {
+      border: 0.4px solid var(--rule);
+      padding: 0.1mm 1.2mm;
+      display: flex;
+      align-items: center;
+      gap: 1.2mm;
+    }
+    .rating-title {
+      font-family: var(--serif);
+      font-size: 6.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: var(--ink-mid);
+    }
+    .rating-dots {
+      display: flex;
+      gap: 1.2px;
+      align-items: center;
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      border: 0.4px solid var(--rule);
+    }
+
+    /* ─── BLOCKS GRID ─── */
+    .blocks-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 0.6mm;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .block-card {
+      border: 0.5px solid var(--rule);
+      padding: 0.4mm 0.6mm 0.3mm 0.6mm;
+      break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+      box-sizing: border-box;
+      background: var(--bg);
+      position: relative;
+    }
+
+    .block-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1px;
+      border-bottom: 0.3px solid var(--rule-lt);
+      padding-bottom: 0.2mm;
+      flex-shrink: 0;
+      margin-bottom: 0.2mm;
+    }
+    .block-num {
+      font-family: var(--display);
+      font-size: 5.5px;
+      font-weight: 600;
+      color: var(--ink-mid);
+      flex-shrink: 0;
+      margin-right: 1px;
+    }
+    .block-name {
+      font-family: var(--serif);
+      font-size: 7px;
+      font-weight: 600;
+      flex: 1;
+      line-height: 1.1;
+      color: var(--ink);
+      letter-spacing: 0.2px;
+    }
+    .block-time {
+      font-family: var(--mono);
+      font-size: 5px;
+      color: var(--ink-light);
+      flex-shrink: 0;
+      margin: 0 1px;
+      font-weight: 400;
+    }
+
+    .block-done {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 5px;
+      flex-shrink: 0;
+      color: var(--ink-mid);
+      font-family: var(--mono);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+    }
+    .block-done input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      border: 0.5px solid var(--ink);
+      background: var(--bg);
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      margin: 0;
+      padding: 0;
+      transition: background 0.1s;
+    }
+    .block-done input[type="checkbox"]:checked {
+      background: var(--ink);
+    }
+    .block-done input[type="checkbox"]:checked::after {
+      content: "✓";
+      position: absolute;
+      top: -2px;
+      left: 1px;
+      font-size: 7px;
+      color: var(--bg);
+      line-height: 1;
+    }
+    .block-done input[type="checkbox"]:focus-visible {
+      outline: 1px solid var(--ink-mid);
+    }
+
+    /* ─── MICROSTEP ZONE ─── */
+    .microstep-zone {
+      font-family: var(--serif);
+      font-size: 5.5px;
+      color: var(--ink-light);
+      line-height: 1.25;
+      padding: 0.1mm 0 0.2mm 0;
+      flex-shrink: 0;
+      border-bottom: 0.2px dotted var(--rule-lt);
+      margin-bottom: 0.2mm;
+      font-style: italic;
+      letter-spacing: 0.1px;
+    }
+    .microstep-zone .ms-label {
+      font-family: var(--mono);
+      font-size: 4.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--ink-faint);
+      font-style: normal;
+      margin-right: 1.5px;
+    }
+
+    /* ─── OUTPUT ZONE ─── */
+    .output-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3mm;
+      padding: 0.2mm 0;
+      min-height: 0;
+    }
+    .output-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5mm 2mm;
+      flex: 1;
+      align-content: flex-start;
+    }
+    .out-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.8px;
+      font-family: var(--serif);
+      font-size: 6.5px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: 0.2px;
+    }
+    .out-item .out-input {
+      display: inline-block;
+      border: none;
+      border-bottom: 0.4px solid var(--rule);
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      width: 28px;
+      min-width: 16px;
+      padding: 0 1px;
+      margin: 0;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: var(--mono);
+      font-size: 6.5px;
+      text-align: center;
+    }
+    .out-item .out-input:focus {
+      border-bottom-color: var(--ink);
+    }
+    .out-item .out-slash {
+      color: var(--ink-faint);
+      font-size: 5px;
+      margin: 0 0.5px;
+    }
+    .out-item .out-denom {
+      font-size: 5.5px;
+      color: var(--ink-light);
+      font-weight: 400;
+    }
+    .out-item .out-field-sm {
+      width: 18px;
+    }
+    .out-item .out-field-lg {
+      width: 40px;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 0.5px solid var(--ink);
+      padding-top: 0.4mm;
+      margin-top: 0.3mm;
+      flex-shrink: 0;
+    }
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3mm;
+    }
+    .footer-title {
+      font-family: var(--display);
+      font-size: 6.5px;
+      letter-spacing: 2.5px;
+      color: var(--ink-mid);
+      text-transform: uppercase;
+    }
+    .footer-tagline {
+      font-family: var(--serif);
+      font-size: 5.5px;
+      font-style: italic;
+      color: var(--ink-light);
+    }
+
+    .footer-nonneg {
+      display: flex;
+      gap: 1.5mm;
+      align-items: center;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .nonneg-label {
+      font-family: var(--mono);
+      font-size: 4.5px;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .nonneg-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8px;
+      font-family: var(--serif);
+      font-size: 5.5px;
+      color: var(--ink-mid);
+    }
+    .nonneg-item .check-box {
+      width: 5.5px;
+      height: 5.5px;
+      border: 0.4px solid var(--ink);
+      display: inline-block;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+
+    .footer-sig {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5mm;
+      flex-shrink: 0;
+    }
+    .footer-score {
+      display: flex;
+      gap: 1.5mm;
+      align-items: center;
+    }
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2mm;
+    }
+    .score-label {
+      font-family: var(--mono);
+      font-size: 4px;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .score-dots {
+      display: flex;
+      gap: 0.8px;
+    }
+    .score-dot {
+      width: 5px;
+      height: 5px;
+      border: 0.3px solid var(--rule);
+      border-radius: 50%;
+    }
+    .sig-line {
+      width: 18mm;
+      border-bottom: 0.4px solid var(--rule);
+      margin-top: 0.5px;
+    }
+    .sig-label {
+      font-family: var(--mono);
+      font-size: 4px;
+      color: var(--ink-light);
+      text-align: right;
+      letter-spacing: 0.4px;
+    }
+
+    /* ─── SCREEN PREVIEW ─── */
+    @media screen {
+      body { background: #b0b0b0; padding: 6mm; }
+      .page {
+        width: 283mm; height: 200mm;
+        margin: 0 auto; padding: 2mm 3mm;
+        background: var(--bg);
+        box-shadow: 0 6px 32px rgba(0,0,0,0.35);
+      }
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .page { padding: 2mm 3mm; margin: 0; box-shadow: none; width: 100%; height: 200mm; }
+      .digital-bar { display: none !important; }
+      #save-pdf-btn { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header>
+    <div class="hdr-left">
+      <div class="hdr-title">Sadhak</div>
+      <div class="hdr-tagline">साधक · Output Tracker</div>
+    </div>
+    <div class="meta-strip">
+      <div class="meta-cell"><div class="meta-label">Date / तारीख</div><div class="write-line"></div></div>
+      <div class="meta-cell"><div class="meta-label">Day / वार</div><div class="write-line"></div></div>
+      <div class="meta-cell"><div class="meta-label">Week / सप्ताह</div><div class="write-line"></div></div>
+      <div class="meta-cell"><div class="meta-label">Wake / उठणे</div><div class="write-line"></div></div>
+      <div class="meta-cell"><div class="meta-label">Sleep / झोप</div><div class="write-line"></div></div>
+      <div class="meta-cell"><div class="meta-label">Weight / वजन</div><div class="write-line"></div></div>
+      <div class="meta-cell"><div class="meta-label">Energy / ऊर्जा</div><div class="write-line"></div></div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-day">योगः कर्मसु कौशलम्</div>
+      <div class="hdr-pg">पृष्ठ १/१</div>
+    </div>
+  </header>
+
+  <!-- TOP BAND -->
+  <div class="top-band">
+    <div class="sankalpa">
+      <span class="sankalpa-label">संकल्प · Sankalpa</span>
+      <div class="sankalpa-line"></div>
+    </div>
+    <div class="must-wins">
+      <span class="mw-label">3 Must Wins</span>
+      <div class="mw-item"><span class="mw-num">I</span><div class="mw-line"></div></div>
+      <div class="mw-item"><span class="mw-num">II</span><div class="mw-line"></div></div>
+      <div class="mw-item"><span class="mw-num">III</span><div class="mw-line"></div></div>
+    </div>
+    <div class="ratings">
+      <div class="rating-card"><div class="rating-title">शील</div><div class="rating-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+      <div class="rating-card"><div class="rating-title">समाधी</div><div class="rating-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+      <div class="rating-card"><div class="rating-title">प्रज्ञा</div><div class="rating-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+    </div>
+  </div>
+
+  <!-- 18 BLOCKS GRID -->
+  <div class="blocks-grid">
+
+    <!-- 01 – ध्यान -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">01</span>
+        <span class="block-name">ध्यान</span>
+        <span class="block-time">03:30–05:00</span>
+        <label class="block-done"><input type="checkbox" data-block="01" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> शुची / अनुलोम विलोम / विपश्यना / मेत्ता</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">बैठक <input type="text" class="out-input" data-block="01" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">अधिष्ठान <input type="text" class="out-input" data-block="01" data-field="1"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">संवेदना <input type="text" class="out-input" data-block="01" data-field="2"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 – संकल्प -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">02</span>
+        <span class="block-name">संकल्प</span>
+        <span class="block-time">05:00–05:30</span>
+        <label class="block-done"><input type="checkbox" data-block="02" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> संकल्प / कालचे मल्यांकन / आजच्या तीन प्राथमिकता / प्रत्येक टाईम ब्लॉकची प्राथमिकता</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">विचार-वाणी-कृती <input type="text" class="out-input" data-block="02" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">काल-आज-आता <input type="text" class="out-input" data-block="02" data-field="1"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 – शुचि -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">03</span>
+        <span class="block-name">शुचि</span>
+        <span class="block-time">05:30–06:00</span>
+        <label class="block-done"><input type="checkbox" data-block="03" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> शौच / शुचि / अभ्यंग</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">शौच <input type="text" class="out-input" data-block="03" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 – व्यायाम -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">04</span>
+        <span class="block-name">व्यायाम</span>
+        <span class="block-time">06:00–08:00</span>
+        <label class="block-done"><input type="checkbox" data-block="04" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> रनिंग / सूर्यनमस्कार / मा.‌आर्ट्स / पावर ड्रिल / आसने / प्राणायाम / स्ट्रेच</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">रनिंग <input type="text" class="out-input out-field-sm" data-block="04" data-field="0"> <span class="out-slash">/</span><span class="out-denom">2–6 km</span></span>
+          <span class="out-item">सूर्यनमस्कार <input type="text" class="out-input out-field-sm" data-block="04" data-field="1"> /12–108</span>
+          <span class="out-item">पंचेस <input type="text" class="out-input out-field-sm" data-block="04" data-field="2"> /500–1,000</span>
+          <span class="out-item">फिंगर जॅब <input type="text" class="out-input out-field-sm" data-block="04" data-field="3"> /300–400</span>
+          <span class="out-item">हुक पंचेस <input type="text" class="out-input out-field-sm" data-block="04" data-field="4"> /200</span>
+          <span class="out-item">बॅकफिस्ट्स <input type="text" class="out-input out-field-sm" data-block="04" data-field="5"> /200</span>
+          <span class="out-item">साईड किक्स <input type="text" class="out-input out-field-sm" data-block="04" data-field="6"> /500</span>
+          <span class="out-item">फ्रंट &amp; हुक किक्स <input type="text" class="out-input out-field-sm" data-block="04" data-field="7"> /100+</span>
+          <span class="out-item">Push Ups <input type="text" class="out-input out-field-sm" data-block="04" data-field="8"> /(4×20)</span>
+          <span class="out-item">Pull Ups <input type="text" class="out-input out-field-sm" data-block="04" data-field="9"> /(4×10)</span>
+          <span class="out-item">Squats <input type="text" class="out-input out-field-sm" data-block="04" data-field="10"> /(4×50)</span>
+          <span class="out-item">Waist Twists <input type="text" class="out-input out-field-sm" data-block="04" data-field="11"> /(4×90)</span>
+          <span class="out-item">Sit-Ups <input type="text" class="out-input out-field-sm" data-block="04" data-field="12"> /(4×20)</span>
+          <span class="out-item">Leg Raises <input type="text" class="out-input out-field-sm" data-block="04" data-field="13"> /(4×20)</span>
+          <span class="out-item">Frog Kicks <input type="text" class="out-input out-field-sm" data-block="04" data-field="14"> /(4×50)</span>
+          <span class="out-item">Roman Chair Sit-Ups <input type="text" class="out-input out-field-sm" data-block="04" data-field="15"> /(4×30)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05 – अभ्यास -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">05</span>
+        <span class="block-name">अभ्यास</span>
+        <span class="block-time">08:00–08:30</span>
+        <label class="block-done"><input type="checkbox" data-block="05" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> अभ्यासाचे साध्य ठरवणे / वाचन / मूळ मसूदा लिहून घेणे / शिकलेल्या पैकी आज काय वापरणार?</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">वाचन <input type="text" class="out-input out-field-sm" data-block="05" data-field="0"> / 10 पाने</span>
+          <span class="out-item">वापरण्या योग्य न वापरलेल्या युक्त्या <input type="text" class="out-input out-field-sm" data-block="05" data-field="1"> / 0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 – पोषण -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">06</span>
+        <span class="block-name">पोषण</span>
+        <span class="block-time">08:30–09:00</span>
+        <label class="block-done"><input type="checkbox" data-block="06" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> स्नान / त्राटक / मानसपूजा / गीतापाठ / नाष्ता / सनबाथ / वजू</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item"><input type="text" class="out-input" data-block="06" data-field="0"> / 800 gm फळे</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 07 – सराव -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">07</span>
+        <span class="block-name">सराव</span>
+        <span class="block-time">09:00–10:30</span>
+        <label class="block-done"><input type="checkbox" data-block="07" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> अभिनय व्यायाम / अभिनय सराव</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">रेकॉर्ड <input type="text" class="out-input out-field-sm" data-block="07" data-field="0"> <span class="out-slash">/</span><span class="out-denom">60 min</span></span>
+          <span class="out-item">पब्लिश <input type="text" class="out-input out-field-sm" data-block="07" data-field="1"> <span class="out-slash">/</span><span class="out-denom">30 min</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08 – संपर्क -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">08</span>
+        <span class="block-name">संपर्क</span>
+        <span class="block-time">10:30–11:30</span>
+        <label class="block-done"><input type="checkbox" data-block="08" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> मेसेजेस / ईमेल / कॉलिंग</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="08" data-field="0"> / 10 Calls Made</span>
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="08" data-field="1"> / 2 New Contacts</span>
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="08" data-field="2"> / 100 Messages Sent</span>
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="08" data-field="3"> / 100 Emails</span>
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="08" data-field="4"> / 1 Collab</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 09 – लंच -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">09</span>
+        <span class="block-name">लंच</span>
+        <span class="block-time">11:30–12:30</span>
+        <label class="block-done"><input type="checkbox" data-block="09" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> लंच / विश्राम</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">विश्राम <input type="text" class="out-input out-field-sm" data-block="09" data-field="0"> / 20 mins</span>
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="09" data-field="1"> / 1 Collab</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10 – निर्मिती -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">10</span>
+        <span class="block-name">निर्मिती</span>
+        <span class="block-time">12:30–14:00</span>
+        <label class="block-done"><input type="checkbox" data-block="10" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> प्रोडक्ट / सर्विस</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">प्रोडक्ट / सर्विस <input type="text" class="out-input" data-block="10" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11 – सेवा -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">11</span>
+        <span class="block-name">सेवा</span>
+        <span class="block-time">14:00–15:30</span>
+        <label class="block-done"><input type="checkbox" data-block="11" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> रिसर्च / रेकॉर्ड / पब्लिश</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="11" data-field="0"> / 60 mins Record</span>
+          <span class="out-item"><input type="text" class="out-input out-field-sm" data-block="11" data-field="1"> / 30 mins Publish</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12 – सेवानिवृत्ती -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">12</span>
+        <span class="block-name">सेवानिवृत्ती</span>
+        <span class="block-time">15:30–16:00</span>
+        <label class="block-done"><input type="checkbox" data-block="12" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> रिपोर्ट / क्लोजिंग / जर्नल</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">उत्पन्न <input type="text" class="out-input out-field-sm" data-block="12" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1000</span></span>
+          <span class="out-item">खर्च <input type="text" class="out-input out-field-sm" data-block="12" data-field="1"> <span class="out-slash">/</span><span class="out-denom">300</span></span>
+          <span class="out-item">लक्ष्य <input type="text" class="out-input out-field-sm" data-block="12" data-field="2"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 13 – जिम/कार्डिओ -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">13</span>
+        <span class="block-name">जिम/कार्डिओ</span>
+        <span class="block-time">16:00–17:00</span>
+        <label class="block-done"><input type="checkbox" data-block="13" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> Warm-up / Push Day / Pull Day / Leg Day / Cardio finisher / HIIT / Steady / Cool Down / Stretch / Foam Roll</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">Strength <input type="text" class="out-input out-field-sm" data-block="13" data-field="0"> / (2×8)</span>
+          <span class="out-item">Clean &amp; Press <input type="text" class="out-input out-field-sm" data-block="13" data-field="1"> / (2×12)</span>
+          <span class="out-item">Squats <input type="text" class="out-input out-field-sm" data-block="13" data-field="2"> / (2×8)</span>
+          <span class="out-item">Barbell Pullovers <input type="text" class="out-input out-field-sm" data-block="13" data-field="3"> / (2×6)</span>
+          <span class="out-item">Bench Press <input type="text" class="out-input out-field-sm" data-block="13" data-field="4"> / (2×8)</span>
+          <span class="out-item">Good Mornings <input type="text" class="out-input out-field-sm" data-block="13" data-field="5"> / (2×8)</span>
+          <span class="out-item">Bicep Curls <input type="text" class="out-input out-field-sm" data-block="13" data-field="6"> / (2×8)</span>
+          <span class="out-item">OR</span>
+          <span class="out-item">Cardio <input type="text" class="out-input out-field-sm" data-block="13" data-field="7"> / 4–6km Run</span>
+          <span class="out-item">Stationary Bike <input type="text" class="out-input out-field-sm" data-block="13" data-field="8"> / 45 min</span>
+          <span class="out-item">Skip Rope <input type="text" class="out-input out-field-sm" data-block="13" data-field="9"> / 30 min</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14 – संध्या ध्यान -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">14</span>
+        <span class="block-name">संध्या ध्यान</span>
+        <span class="block-time">17:00–18:30</span>
+        <label class="block-done"><input type="checkbox" data-block="14" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> स्ट्रेचिंग / अनुलोम विलोम / विपश्यना / मेत्ता / संकल्प / डायरी / करेक्शन / उद्याचे नियोजन</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">बैठक <input type="text" class="out-input" data-block="14" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">अधिष्ठान <input type="text" class="out-input" data-block="14" data-field="1"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">संवेदना <input type="text" class="out-input" data-block="14" data-field="2"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">विचार-वाणी-कृती <input type="text" class="out-input" data-block="14" data-field="3"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">काल-आज-आता <input type="text" class="out-input" data-block="14" data-field="4"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">डायरी <input type="text" class="out-input" data-block="14" data-field="5"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">करेक्शन <input type="text" class="out-input" data-block="14" data-field="6"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">उद्याची योजना <input type="text" class="out-input" data-block="14" data-field="7"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 15 – डिनर -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">15</span>
+        <span class="block-name">डिनर</span>
+        <span class="block-time">18:30–19:30</span>
+        <label class="block-done"><input type="checkbox" data-block="15" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> स्नान / त्राटक / मानसपूजा / गीतापाठ / डिनर / शतपावली / डान्स / गायन / ध्यान</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">कॅंडल डिनर <input type="text" class="out-input" data-block="15" data-field="0"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">फॅमिली कनेक्ट <input type="text" class="out-input" data-block="15" data-field="1"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+          <span class="out-item">उत्सव <input type="text" class="out-input" data-block="15" data-field="2"> <span class="out-slash">/</span><span class="out-denom">1-5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 16 – उद्याची तयारी -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">16</span>
+        <span class="block-name">उद्याची तयारी</span>
+        <span class="block-time">19:30–20:30</span>
+        <label class="block-done"><input type="checkbox" data-block="16" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> अभ्यास / सराव / तयारी</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">अभ्यास <input type="text" class="out-input out-field-sm" data-block="16" data-field="0"> / 20 mins</span>
+          <span class="out-item">सराव <input type="text" class="out-input out-field-sm" data-block="16" data-field="1"> / 20 mins</span>
+          <span class="out-item">तयारी <input type="text" class="out-input out-field-sm" data-block="16" data-field="2"> / 20 mins</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 17 – झोपेची तयारी -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">17</span>
+        <span class="block-name">झोपेची तयारी</span>
+        <span class="block-time">20:30–21:30</span>
+        <label class="block-done"><input type="checkbox" data-block="17" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> शौच / शुचि / दिवा वाचन / वजू / मेत्ता / उत्तिष्ठ संकल्प</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item">वाचन <input type="text" class="out-input out-field-sm" data-block="17" data-field="0"> / 10</span>
+          <span class="out-item">लिखाण <input type="text" class="out-input out-field-sm" data-block="17" data-field="1"> / 1 शिकवण</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 18 – योगनिद्रा -->
+    <div class="block-card">
+      <div class="block-header">
+        <span class="block-num">18</span>
+        <span class="block-name">योगनिद्रा</span>
+        <span class="block-time">21:30–03:30</span>
+        <label class="block-done"><input type="checkbox" data-block="18" /> Done</label>
+      </div>
+      <div class="microstep-zone"><span class="ms-label">·</span> योगनिद्रा</div>
+      <div class="output-zone">
+        <div class="output-grid">
+          <span class="out-item"><input type="text" class="out-input" data-block="18" data-field="0"> / 9:30 PM</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /blocks-grid -->
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-left">
+      <div class="footer-title">Sadhak · Human OS</div>
+      <div class="footer-tagline">Not perfection. Daily alignment. Output-first.</div>
+    </div>
+    <div class="footer-nonneg">
+      <span class="nonneg-label">Non-Negotiables</span>
+      <div class="nonneg-item"><span class="check-box"></span> ध्यान</div>
+      <div class="nonneg-item"><span class="check-box"></span> व्यायाम</div>
+      <div class="nonneg-item"><span class="check-box"></span> अभ्यास</div>
+      <div class="nonneg-item"><span class="check-box"></span> सराव</div>
+      <div class="nonneg-item"><span class="check-box"></span> निर्मिती</div>
+      <div class="nonneg-item"><span class="check-box"></span> सेवा</div>
+    </div>
+    <div class="footer-sig">
+      <div class="footer-score">
+        <div class="score-item">
+          <div class="score-dots"><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div></div>
+          <div class="score-label">Persistent</div>
+        </div>
+        <div class="score-item">
+          <div class="score-dots"><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div></div>
+          <div class="score-label">Consistency</div>
+        </div>
+        <div class="score-item">
+          <div class="score-dots"><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div><div class="score-dot"></div></div>
+          <div class="score-label">Output Performance</div>
+        </div>
+      </div>
+      <div class="sig-line"></div>
+      <div class="sig-label">स्वाक्षरी · Signature</div>
+    </div>
+  </footer>
+
+</div><!-- /page -->
+
+<!-- ═══ TOP-RIGHT "Save as PDF" BUTTON ═══ -->
+<button id="save-pdf-btn" onclick="savePDF()">⬇ Save as PDF</button>
+
+<!-- Digital Control Bar (bottom) -->
+<div class="digital-bar" id="digitalBar">
+  <span class="status" id="statusMsg">Ready</span>
+  <button id="saveBtn">💾 Save</button>
+  <button id="resetBtn">🔄 Reset</button>
+  <button id="exportBtn">📤 Export</button>
+  <button id="importBtn">📥 Import</button>
+  <button id="pdfBtn" onclick="savePDF()">🖨️ PDF</button>
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+</div>
+
+<script>
+  // ── PWA: Register Service Worker ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(err => console.warn('SW registration failed:', err));
+  }
+
+  (function() {
+    // ----- Data management -----
+    const STORAGE_KEY = 'sadhak_outputs';
+    const DATE_KEY = 'sadhak_date';
+
+    function getInputs() {
+      return document.querySelectorAll('.out-input');
+    }
+    function getCheckboxes() {
+      return document.querySelectorAll('.block-done input[type="checkbox"]');
+    }
+
+    function getBlockData() {
+      const data = {};
+      getInputs().forEach(inp => {
+        const block = inp.dataset.block;
+        const field = inp.dataset.field;
+        if (!data[block]) data[block] = {};
+        data[block][field] = inp.value;
+      });
+      getCheckboxes().forEach(cb => {
+        const block = cb.dataset.block;
+        if (!data[block]) data[block] = {};
+        data[block]['_done'] = cb.checked;
+      });
+      return data;
+    }
+
+    function setBlockData(data) {
+      getInputs().forEach(inp => {
+        const block = inp.dataset.block;
+        const field = inp.dataset.field;
+        if (data[block] && data[block][field] !== undefined) {
+          inp.value = data[block][field];
+        } else {
+          inp.value = '';
+        }
+      });
+      getCheckboxes().forEach(cb => {
+        const block = cb.dataset.block;
+        if (data[block] && data[block]['_done'] !== undefined) {
+          cb.checked = data[block]['_done'];
+        } else {
+          cb.checked = false;
+        }
+      });
+    }
+
+    function clearAllInputs() {
+      getInputs().forEach(inp => inp.value = '');
+      getCheckboxes().forEach(cb => cb.checked = false);
+    }
+
+    function saveToStorage() {
+      const data = getBlockData();
+      const dateStr = new Date().toISOString().split('T')[0];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(DATE_KEY, dateStr);
+      updateStatus('Saved at ' + new Date().toLocaleTimeString());
+    }
+
+    function loadFromStorage() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const storedDate = localStorage.getItem(DATE_KEY);
+      const today = new Date().toISOString().split('T')[0];
+
+      let shouldReset = false;
+      if (storedDate && storedDate !== today) {
+        if (confirm('It\'s a new day. Do you want to reset for today and archive yesterday\'s data?')) {
+          shouldReset = true;
+        }
+      } else if (storedDate === today) {
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        if (hours >= 21 && minutes >= 30) {
+          if (confirm('It\'s after 9:30 PM. Do you want to reset for tomorrow?')) {
+            shouldReset = true;
+          }
+        }
+      }
+
+      if (shouldReset) {
+        clearAllInputs();
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        localStorage.setItem(DATE_KEY, tomorrowStr);
+        localStorage.removeItem(STORAGE_KEY);
+        updateStatus('Reset for ' + tomorrowStr);
+        return;
+      }
+
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          setBlockData(data);
+          updateStatus('Loaded from storage (' + storedDate + ')');
+        } catch(e) {
+          console.warn('Failed to parse stored data', e);
+        }
+      } else {
+        localStorage.setItem(DATE_KEY, today);
+        updateStatus('New day, ready');
+      }
+    }
+
+    function resetTracker() {
+      if (confirm('Reset all inputs and checkboxes? Current data will be lost unless saved.')) {
+        clearAllInputs();
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem(DATE_KEY, today);
+        localStorage.removeItem(STORAGE_KEY);
+        updateStatus('Reset complete.');
+      }
+    }
+
+    function exportData() {
+      const data = getBlockData();
+      const dateStr = new Date().toISOString().split('T')[0];
+      const exportObj = { date: dateStr, blocks: data };
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sadhak_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatus('Exported.');
+    }
+
+    function importData(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.blocks) {
+            setBlockData(data.blocks);
+            if (data.date) localStorage.setItem(DATE_KEY, data.date);
+            saveToStorage();
+            updateStatus('Imported from file.');
+          } else {
+            alert('Invalid file format.');
+          }
+        } catch(err) {
+          alert('Error reading file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function updateStatus(msg) {
+      document.getElementById('statusMsg').textContent = msg;
+    }
+
+    function setupAutoSave() {
+      const save = () => {
+        clearTimeout(window._saveTimer);
+        window._saveTimer = setTimeout(saveToStorage, 300);
+      };
+      getInputs().forEach(inp => inp.addEventListener('input', save));
+      getCheckboxes().forEach(cb => cb.addEventListener('change', save));
+    }
+
+    function init() {
+      loadFromStorage();
+      setupAutoSave();
+
+      document.getElementById('saveBtn').addEventListener('click', saveToStorage);
+      document.getElementById('resetBtn').addEventListener('click', resetTracker);
+      document.getElementById('exportBtn').addEventListener('click', exportData);
+      document.getElementById('importBtn').addEventListener('click', function() {
+        document.getElementById('fileInput').click();
+      });
+      document.getElementById('fileInput').addEventListener('change', function(e) {
+        if (this.files.length > 0) {
+          importData(this.files[0]);
+          this.value = '';
+        }
+      });
+
+      window.addEventListener('beforeunload', saveToStorage);
+
+      setInterval(function() {
+        const storedDate = localStorage.getItem(DATE_KEY);
+        const today = new Date().toISOString().split('T')[0];
+        if (storedDate !== today) {
+          if (confirm('A new day has started. Reset tracker?')) {
+            clearAllInputs();
+            localStorage.setItem(DATE_KEY, today);
+            localStorage.removeItem(STORAGE_KEY);
+            updateStatus('Reset for new day.');
+          }
+        } else {
+          const now = new Date();
+          if (now.getHours() >= 21 && now.getMinutes() >= 30) {
+            const resetFlag = localStorage.getItem('sadhak_reset_today');
+            if (!resetFlag) {
+              if (confirm('It\'s after 9:30 PM. Save today\'s data and reset for tomorrow?')) {
+                saveToStorage();
+                clearAllInputs();
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                localStorage.setItem(DATE_KEY, tomorrow.toISOString().split('T')[0]);
+                localStorage.setItem('sadhak_reset_today', 'true');
+                updateStatus('Reset for tomorrow.');
+              }
+            }
+          } else {
+            localStorage.removeItem('sadhak_reset_today');
+          }
+        }
+      }, 60000);
+    }
+
+    // ── PDF save ──
+    function savePDF() {
+      const btn = document.getElementById('save-pdf-btn');
+      const pdfBtn = document.getElementById('pdfBtn');
+      if (btn) btn.style.display = 'none';
+      if (pdfBtn) pdfBtn.style.display = 'none';
+      setTimeout(function() {
+        window.print();
+        if (btn) btn.style.display = '';
+        if (pdfBtn) pdfBtn.style.display = '';
+      }, 300);
+    }
+    window.savePDF = savePDF;
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+</script>
+</body>
+</html>
